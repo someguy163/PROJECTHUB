@@ -1,0 +1,2 @@
+# 폴더 안에 CodeIgniter 의 index.php 가 남아 있어도 허브 페이지가 먼저 열리게 한다.
+DirectoryIndex index.html
