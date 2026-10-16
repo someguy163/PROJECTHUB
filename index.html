@@ -94,15 +94,26 @@
   .card p { margin: 0 0 22px; color: var(--muted); font-size: .95rem; }
 
   .stub {
-    margin: auto -24px 0; height: var(--stub); padding: 0 24px;
+    position: relative; margin: auto -24px 0; height: var(--stub); padding: 0 24px;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     background: var(--c); color: #10171B; font-size: .85rem; font-weight: 600;
     border-top: 2px dashed var(--surface);   /* 절취선 */
   }
+  .stub span, .stub::after { position: relative; }   /* 로딩바(::before) 위에 글자가 오도록 */
   .stub span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .stub::after { content: "입장"; margin-left: auto; font-size: 1rem; font-weight: 800; }
 
-  @media (prefers-reduced-motion: reduce) { .card, .knob { transition: none; } }
+  /* 카드를 누르면 입장 칸이 로딩바가 된다: 다른 사이트가 열릴 때까지 걸리는 동안 차오르다가 90% 근처에서 기다린다 */
+  .stub::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 0; background: rgb(255 255 255 / .4); }
+  .card.loading { cursor: progress; }
+  .card.loading .stub::before { animation: fill 7s cubic-bezier(.15, .6, .2, 1) forwards; }
+  .card.loading .stub::after { content: "입장 중…"; }
+  @keyframes fill { to { width: 92%; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .knob { transition: none; }
+    .card.loading .stub::before { animation: none; width: 100%; opacity: .5; }
+  }
 </style>
 </head>
 <body>
@@ -149,6 +160,23 @@
     sync();
   };
   sync();
+
+  // 카드를 누르면 로딩바를 보여 준다. 이 페이지가 그대로 남는 경우(새 탭으로 열기)는 제외하고,
+  // 뒤로가기로 돌아왔을 때나 15초가 지나도 안 열리면 원래대로 되돌린다
+  var timer, cards = document.querySelector('.cards');
+  function idle() {
+    clearTimeout(timer);
+    cards.querySelectorAll('.loading').forEach(function (c) { c.classList.remove('loading'); c.removeAttribute('aria-busy'); });
+  }
+  cards.addEventListener('click', function (e) {
+    var a = e.target.closest('.card');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || a.target === '_blank') return;
+    idle();
+    a.classList.add('loading');
+    a.setAttribute('aria-busy', 'true');
+    timer = setTimeout(idle, 15000);
+  });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) idle(); });
 
   // 입장 칸에 주소(도메인)를 자동으로 적는다 — 카드마다 따로 쓸 필요 없음
   document.querySelectorAll('.stub').forEach(function (s) {
